@@ -20,26 +20,43 @@ function statusLabel(status: string) {
   return labels[status] ?? status;
 }
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  Freins: '🔴',
+  Filtres: '🔲',
+  Freinage: '🛞',
+  Electricite: '💡',
+  Suspension: '🌀',
+  Moteur: '⚙️',
+  Carrosserie: '🚗',
+  Echappement: '💨',
+};
+
 function ProductImage({ category, imageUrl }: { category: string; imageUrl?: string }) {
-  const colors: Record<string, string> = {
-    Filtres: 'linear-gradient(135deg,#1a0a0a,#3d0f0f)',
-    Freinage: 'linear-gradient(135deg,#0a0a1a,#0f1a3d)',
-    Electricite: 'linear-gradient(135deg,#0a1a0a,#0f3d1a)',
-    Suspension: 'linear-gradient(135deg,#1a1a0a,#3d3d0f)',
-    Moteur: 'linear-gradient(135deg,#1a0a1a,#3d0f3d)',
-  };
-  const bg = colors[category] || 'linear-gradient(135deg,#181818,#2a2a2a)';
-  const initials = category ? category.slice(0, 2).toUpperCase() : '??';
+  const bg = 'linear-gradient(135deg,#141414,#1e1e1e)';
   if (imageUrl) {
     return (
       <div className="product-image-inner product-image-photo">
-        <img src={imageUrl} alt={category} loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.parentElement!).style.background = bg; }} />
+        <img
+          src={imageUrl}
+          alt={category}
+          loading="lazy"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = 'none';
+            const parent = e.currentTarget.parentElement!;
+            parent.style.background = bg;
+            parent.style.display = 'flex';
+            parent.style.alignItems = 'center';
+            parent.style.justifyContent = 'center';
+            parent.style.fontSize = '3rem';
+            parent.textContent = CATEGORY_EMOJI[category] ?? '🔧';
+          }}
+        />
       </div>
     );
   }
   return (
-    <div className="product-image-inner" style={{ background: bg }}>
-      <span className="product-initials">{initials}</span>
+    <div className="product-image-inner" style={{ background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
+      <span>{CATEGORY_EMOJI[category] ?? '🔧'}</span>
     </div>
   );
 }

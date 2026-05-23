@@ -37,6 +37,7 @@ type ProductForm = {
   quantity: string;
   supplierId: string;
   category: string;
+  image_url: string;
 };
 
 type SupplierForm = {
@@ -103,6 +104,18 @@ const emptyProductForm: ProductForm = {
   quantity: '',
   supplierId: '',
   category: '',
+  image_url: '',
+};
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  Freins: '🔴',
+  Filtres: '🔲',
+  Freinage: '🛞',
+  Electricite: '💡',
+  Suspension: '🌀',
+  Moteur: '⚙️',
+  Carrosserie: '🚗',
+  Echappement: '💨',
 };
 
 const emptySupplierForm: SupplierForm = {
@@ -676,6 +689,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
       quantity,
       supplierId: productForm.supplierId || undefined,
       category: productForm.category.trim(),
+      image_url: productForm.image_url || undefined,
     };
   }
 
@@ -729,7 +743,19 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
       quantity: String(product.quantity),
       supplierId: product.supplierId ?? '',
       category: product.category,
+      image_url: product.image_url ?? '',
     });
+    if (product.image_url) {
+      setMediaItems([{
+        id: `existing-${product.id}`,
+        name: product.name,
+        kind: 'image',
+        url: product.image_url,
+        progress: 100,
+      }]);
+    } else {
+      clearMediaItems();
+    }
     scrollCardIntoView(productFormCardRef.current);
   }
 
@@ -938,6 +964,17 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
         progress: 12,
       };
 
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const base64 = e.target?.result as string;
+          if (base64) {
+            setProductForm((current) => ({ ...current, image_url: base64 }));
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+
       window.setTimeout(() => {
         setMediaItems((current) =>
           current.map((media) => (media.id === id ? { ...media, progress: 58 } : media)),
@@ -958,8 +995,12 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   function removeMedia(id: string) {
     setMediaItems((current) => {
       const found = current.find((item) => item.id === id);
-      if (found) URL.revokeObjectURL(found.url);
-      return current.filter((item) => item.id !== id);
+      if (found && !found.id.startsWith('existing-')) URL.revokeObjectURL(found.url);
+      const next = current.filter((item) => item.id !== id);
+      if (next.length === 0) {
+        setProductForm((f) => ({ ...f, image_url: '' }));
+      }
+      return next;
     });
   }
 
@@ -1632,9 +1673,14 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
             <div className="preview-media">
               {mediaItems[0]?.kind === 'image' && <img src={mediaItems[0].url} alt={mediaItems[0].name} />}
               {mediaItems[0]?.kind === 'video' && <video src={mediaItems[0].url} muted controls />}
-              {!mediaItems[0] && (
+              {!mediaItems[0] && productForm.image_url && (
+                <img src={productForm.image_url} alt="apercu" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
+              {!mediaItems[0] && !productForm.image_url && (
                 <div className="preview-placeholder">
-                  <Icon name="image" />
+                  <span style={{ fontSize: 48 }}>
+                    {CATEGORY_EMOJI[productForm.category] ?? '🔧'}
+                  </span>
                 </div>
               )}
             </div>
@@ -1701,8 +1747,22 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
                 {paginatedProducts.map((product) => (
                   <tr key={product.id}>
                     <td>
-                      <strong>{product.name}</strong>
-                      <span>{product.description}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: 40, height: 40, borderRadius: 6, overflow: 'hidden', flexShrink: 0,
+                          background: 'var(--surface-2, #222)', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', fontSize: 18, border: '1px solid var(--border)'
+                        }}>
+                          {product.image_url
+                            ? <img src={product.image_url} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                            : <span>{CATEGORY_EMOJI[product.category] ?? '🔧'}</span>
+                          }
+                        </div>
+                        <div>
+                          <strong>{product.name}</strong>
+                          <span>{product.description}</span>
+                        </div>
+                      </div>
                     </td>
                     <td>{product.category}</td>
                     <td>{formatPrice(product.price)}</td>
